@@ -93,11 +93,14 @@ describe("chess-rules: line validation (N8)", () => {
     expect(result.ok).toBe(true);
     if (result.ok) {
       expect(result.moves[0]).toMatchObject({
-        moveNumber: 1,
+        fullMoveNumber: 1,
         san: "d4",
         sideToMove: "white",
         fenBefore: START_FEN,
       });
+      // Full-move number is shared by both colours' moves in the pair.
+      expect(result.moves[1].fullMoveNumber).toBe(1); // 1...d5
+      expect(result.moves[2].fullMoveNumber).toBe(2); // 2.Bf4
       expect(result.moves[1].sideToMove).toBe("black");
       expect(result.moves[0].fenAfter).toBe(result.moves[1].fenBefore);
     }
@@ -108,6 +111,19 @@ describe("chess-rules: line validation (N8)", () => {
       "d4",
       "d5",
       "Bf4",
+    ]);
+  });
+
+  it("strips comments, NAGs, and black-move-number forms", () => {
+    expect(
+      pgnToSanTokens("1. d4 {a solid start} d5 $1 2. Bf4 1... is fine *"),
+    ).toEqual(["d4", "d5", "Bf4", "is", "fine"]);
+    // The "1..." black-move-number prefix is stripped, not the moves.
+    expect(pgnToSanTokens("1. e4 c6 2. d4 1... d5")).toEqual([
+      "e4",
+      "c6",
+      "d4",
+      "d5",
     ]);
   });
 });

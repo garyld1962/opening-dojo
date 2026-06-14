@@ -23,7 +23,8 @@ export type ValidateLineResult =
 
 /** Per-move record produced while validating a line. */
 export interface ValidatedMove {
-  moveNumber: number;
+  /** chess.js full-move number (white and black share one). NOT the ply index. */
+  fullMoveNumber: number;
   san: string;
   fenBefore: string;
   fenAfter: string;
@@ -84,7 +85,7 @@ export function pgnToSanTokens(pgn: string): string[] {
   return pgn
     .replace(/\{[^}]*\}/g, " ") // comments
     .replace(/\$\d+/g, " ") // NAGs
-    .replace(/\b(1-0|0-1|1\/2-1\/2|\*)\b/g, " ") // results
+    .replace(/(?:1-0|0-1|1\/2-1\/2|\*)/g, " ") // results (incl. bare "*")
     .replace(/\d+\.(\.\.)?/g, " ") // move numbers (e.g. "1." or "1...")
     .split(/\s+/)
     .map((t) => t.trim())
@@ -151,11 +152,11 @@ export function validateLineDetailed(
   for (const token of tokens) {
     const fenBefore = game.fen();
     const turn: Side = game.turn() === "w" ? "white" : "black";
-    const moveNumber = game.moveNumber();
+    const fullMoveNumber = game.moveNumber();
     try {
       const move = game.move(token);
       moves.push({
-        moveNumber,
+        fullMoveNumber,
         san: move.san,
         fenBefore,
         fenAfter: game.fen(),

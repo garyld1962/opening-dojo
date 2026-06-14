@@ -368,7 +368,14 @@ const caroKann: OpeningContent = {
 
 export const openings: OpeningContent[] = [london, caroKann];
 
-/** Find a curated opening by its URL slug. */
+/**
+ * Find a curated opening by its URL slug.
+ *
+ * Note: `slug` is a content-layer concept only — it is NOT persisted on the
+ * Opening DB row. Routes resolve content via this function; to load the
+ * matching DB rows, query `opening.findFirst({ where: { name } })` using the
+ * content's `name`. The pair (slug → name) is stable here in code.
+ */
 export function getOpeningBySlug(slug: string): OpeningContent | undefined {
   return openings.find((o) => o.slug === slug);
 }

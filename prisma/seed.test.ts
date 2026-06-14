@@ -28,6 +28,15 @@ describe("content validation (N8)", () => {
     }
   });
 
+  it("stores moveNumber as the 1-based ply index (not the full-move number)", () => {
+    const line = openings[0].lines[0]; // London classical, 15 plies
+    const rows = buildLineMoves(line);
+    rows.forEach((row, i) => expect(row.moveNumber).toBe(i + 1));
+    // Displayed full move = ceil(ply / 2): ply 1 -> move 1, ply 3 -> move 2.
+    expect(Math.ceil(rows[0].moveNumber / 2)).toBe(1);
+    expect(Math.ceil(rows[2].moveNumber / 2)).toBe(2);
+  });
+
   it("aborts with a clear error on an illegal line", () => {
     const bad: LineContent = {
       name: "bogus",

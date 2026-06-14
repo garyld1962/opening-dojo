@@ -41,6 +41,7 @@ export interface Line {
 export interface MoveExplanation {
   id: string;
   lineId: string;
+  /** 1-based half-move (ply) index within the line. Displayed move = ceil(n/2). */
   moveNumber: number;
   san: string;
   fenBefore: string;
@@ -94,7 +95,7 @@ export interface DrillStep {
   moveExplanationId: string;
   /** Half-move index within the line (0-based). */
   ply: number;
-  /** Move number as displayed (PRD §8.3 `moveNumber`). */
+  /** 1-based ply index matching MoveExplanation.moveNumber. Displayed move = ceil(n/2). */
   moveNumber: number;
   /** Side to move at this step. */
   sideToMove: Side;
