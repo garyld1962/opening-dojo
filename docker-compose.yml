@@ -1,0 +1,21 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: opening-dojo-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: dojo
+      POSTGRES_PASSWORD: dojo
+      POSTGRES_DB: opening_dojo
+    ports:
+      - "5432:5432"
+    volumes:
+      - dojo-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U dojo -d opening_dojo"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  dojo-db-data:

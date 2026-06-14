@@ -1,0 +1,35 @@
+---
+id: full
+title: Full PR Review
+description: >
+  Comprehensive domain sweep run at the PR boundary. All 11 concept
+  domains are in scope. Domains whose triggers don't match the diff are
+  skipped (e.g., data-integrity only fires when persistence is touched).
+
+  This is the standard "end of execution" review. It runs before the
+  professional (seniority) review and before the optional adversarial
+  review.
+
+domains:
+  - id: concept/security
+    mode: always
+  - id: concept/correctness
+    mode: always
+  - id: concept/architecture
+    mode: always
+  - id: concept/tests
+    mode: always
+  - id: concept/performance
+    mode: always
+  - id: concept/operability
+    mode: always
+  - id: concept/resilience
+    mode: always
+  - id: concept/concurrency
+    mode: always
+  - id: concept/requirements
+    mode: always
+  - id: concept/data-integrity
+    mode: conditional
+  - id: concept/api-contract
+    mode: conditional

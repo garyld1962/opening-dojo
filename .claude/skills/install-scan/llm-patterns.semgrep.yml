@@ -1,0 +1,217 @@
+# Semgrep ruleset for LLM-flavored code patterns.
+#
+# These aren't rare or "advanced" issues — they're the patterns LLMs
+# disproportionately generate because they were trained on tutorial /
+# Stack Overflow code from 2018-2020 era. Each rule has a short message
+# explaining why it's an LLM-flavored smell, not just a generic security note.
+#
+# Run via: pattern-scan.sh dir <path>   or   semgrep scan --config <this file>
+#
+# Coverage: Python · JS/TS/JSX · HTML · Java · Bash · Dockerfile
+# Add JMA-specific rules below as you encounter recurring LLM-output smells.
+
+rules:
+
+  # ─────────────────────────── Python ───────────────────────────
+  - id: llm-py-eval-exec
+    languages: [python]
+    severity: ERROR
+    message: >
+      eval()/exec() with user-influenced input is an LLM-flavored anti-pattern
+      (training data shows it as 'how to handle dynamic strings'). Code injection
+      risk. Replace with json.loads, ast.literal_eval, or a structured parser.
+    pattern-either:
+      - pattern: eval(...)
+      - pattern: exec(...)
+
+  - id: llm-py-pickle-load
+    languages: [python]
+    severity: ERROR
+    message: >
+      pickle.load / pickle.loads on untrusted data → arbitrary code execution.
+      LLMs suggest pickle for 'fast Python serialization'; use json or msgpack
+      for cross-trust-boundary data. CWE-502.
+    pattern-either:
+      - pattern: pickle.load(...)
+      - pattern: pickle.loads(...)
+
+  - id: llm-py-yaml-load-unsafe
+    languages: [python]
+    severity: ERROR
+    message: >
+      yaml.load() without Loader= invokes the FullLoader / Loader, which can
+      instantiate arbitrary Python objects. Use yaml.safe_load() unless you
+      explicitly need PyYAML's tag system. LLMs default to bare yaml.load().
+    pattern: yaml.load($X)
+
+  - id: llm-py-requests-verify-false
+    languages: [python]
+    severity: ERROR
+    message: >
+      verify=False disables TLS certificate verification — total MITM exposure.
+      Classic LLM 'fix' when an SSL error appears. If you have a bad cert chain,
+      fix the chain, don't disable verification.
+    pattern-either:
+      - pattern: requests.$M(..., verify=False, ...)
+      - pattern: requests.Session().$M(..., verify=False, ...)
+
+  - id: llm-py-subprocess-shell-true
+    languages: [python]
+    severity: WARNING
+    message: >
+      subprocess with shell=True + user-influenced input is command-injection
+      bait. LLMs love this pattern from old tutorials. Pass an argv list instead
+      and let subprocess handle quoting.
+    pattern: subprocess.$F(..., shell=True, ...)
+
+  - id: llm-py-fstring-sql
+    languages: [python]
+    severity: ERROR
+    message: >
+      f-string SQL interpolation = SQL injection. Use parameterized queries
+      (cursor.execute(query, params)) instead. LLMs especially generate this
+      pattern in 'quick example' code that lands in production.
+    pattern-either:
+      - pattern: $CUR.execute(f"...{$X}...")
+      - pattern: $CUR.executemany(f"...{$X}...")
+
+  # ─────────────────────────── JS / TS ───────────────────────────
+  - id: llm-js-eval
+    languages: [javascript, typescript]
+    severity: ERROR
+    message: >
+      eval() / Function() constructor with non-literal input → arbitrary code
+      execution. LLMs suggest these for 'parse this dynamic expression'. Use
+      JSON.parse for data, or a real parser for expressions.
+    pattern-either:
+      - pattern: eval(...)
+      - pattern: new Function(...)
+
+  - id: llm-js-cors-wildcard
+    languages: [javascript, typescript]
+    severity: ERROR
+    message: >
+      CORS origin '*' on state-changing endpoints lets ANY website read
+      authenticated responses. LLM 'fix' for the CORS-error problem.
+      Whitelist explicit origins instead.
+    pattern-either:
+      - pattern: |
+          cors({origin: '*'})
+      - pattern: |
+          cors({origin: "*"})
+      - pattern: |
+          cors({ origin: '*' })
+      - pattern: |
+          cors({ origin: "*" })
+
+  - id: llm-js-tls-disabled
+    languages: [javascript, typescript]
+    severity: ERROR
+    message: >
+      rejectUnauthorized false disables TLS certificate verification. Same
+      LLM 'fix' pattern as Python's verify=False — never ship.
+    pattern: |
+      rejectUnauthorized: false
+
+  - id: llm-js-jwt-none
+    languages: [javascript, typescript]
+    severity: ERROR
+    message: >
+      JWT with algorithm 'none' lets attackers forge any token. Classic
+      LLM example pattern from old jsonwebtoken tutorials. Pin to RS256 or
+      HS256 explicitly.
+    pattern-either:
+      - pattern: |
+          jwt.sign($X, $Y, {algorithm: 'none'})
+      - pattern: |
+          jwt.sign($X, $Y, {algorithm: "none"})
+      - pattern: |
+          jwt.verify($X, $Y, {algorithms: ['none']})
+
+  - id: llm-js-localstorage-token
+    languages: [javascript, typescript]
+    severity: WARNING
+    message: >
+      Storing auth tokens / API keys in localStorage exposes them to any XSS.
+      LLMs default to localStorage; modern best practice is HttpOnly cookies
+      or in-memory state.
+    pattern-either:
+      - pattern: localStorage.setItem("token", ...)
+      - pattern: localStorage.setItem("auth", ...)
+      - pattern: localStorage.setItem("apiKey", ...)
+      - pattern: localStorage.setItem("api_key", ...)
+      - pattern: localStorage.setItem("accessToken", ...)
+      - pattern: localStorage.setItem("access_token", ...)
+      - pattern: localStorage.setItem("jwt", ...)
+
+  - id: llm-js-math-random
+    languages: [javascript, typescript]
+    severity: WARNING
+    message: >
+      Math.random() is NOT cryptographically secure — predictable across
+      sessions. LLMs use it for tokens / nonces / IDs in tutorial code.
+      Use crypto.randomUUID() or crypto.getRandomValues() instead.
+    pattern: Math.random()
+
+  # ─────────────────────────── React / JSX ───────────────────────────
+  - id: llm-react-dangerously-set-inner-html
+    languages: [javascript, typescript]
+    severity: WARNING
+    message: >
+      dangerouslySetInnerHTML bypasses React's XSS protection. LLMs use it
+      to 'render this HTML string'. If the source is anything user-generated,
+      sanitize with DOMPurify first — or render as text.
+    pattern: |
+      dangerouslySetInnerHTML={{__html: $X}}
+
+  # ─────────────────────────── Java ───────────────────────────
+  - id: llm-java-md5-sha1
+    languages: [java]
+    severity: WARNING
+    message: >
+      MD5 / SHA-1 are not collision-resistant for security purposes.
+      Acceptable for cache keys; never for passwords, signatures, or
+      content-addressable security. LLMs default to MD5 from old samples.
+    pattern-either:
+      - pattern: MessageDigest.getInstance("MD5")
+      - pattern: MessageDigest.getInstance("SHA-1")
+      - pattern: MessageDigest.getInstance("SHA1")
+
+  - id: llm-java-runtime-exec-concat
+    languages: [java]
+    severity: ERROR
+    message: >
+      Runtime.exec() with concatenated input is command injection. LLMs
+      generate this pattern from 'how to run a shell command' tutorials.
+      Use ProcessBuilder with an argv array.
+    pattern: Runtime.getRuntime().exec($X + $Y)
+
+  # ─────────────────────────── Bash ───────────────────────────
+  - id: llm-bash-curl-pipe-bash
+    languages: [bash]
+    severity: WARNING
+    message: >
+      curl URL | bash patterns execute remote code without verification.
+      Common in LLM-suggested install commands — but the user has no chance
+      to inspect what runs. Download, verify checksum, then execute.
+    pattern-either:
+      - pattern: curl $URL | bash
+      - pattern: curl $URL | sh
+      - pattern: wget $URL -O- | bash
+
+  - id: llm-bash-eval-userinput
+    languages: [bash]
+    severity: WARNING
+    message: >
+      eval on a variable that came from user input → command injection.
+      LLMs use eval for 'dynamic command construction'; rewrite without it.
+    pattern: eval $VAR
+
+  # ─────────────────────────── Dockerfile ───────────────────────────
+  - id: llm-dockerfile-add-from-url
+    languages: [dockerfile]
+    severity: WARNING
+    message: >
+      ADD with a URL fetches over the network without verification. Use
+      RUN curl/wget with checksum validation instead.
+    pattern: ADD https://$URL $DEST
