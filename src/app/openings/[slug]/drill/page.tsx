@@ -10,7 +10,7 @@
  */
 import { use, useCallback, useEffect, useMemo, useState } from "react";
 import { Board } from "@/components/Board";
-import { applyMoveFromSquares, boardOrientation } from "@/lib/chess-rules";
+import { boardOrientation, legalMoves } from "@/lib/chess-rules";
 import {
   buildDrillSteps,
   evaluateAttempt,
@@ -106,27 +106,27 @@ export default function DrillPage({
     [],
   );
 
+  // Board (Lane A) validates legality and reports the move as (SAN, FEN-after).
+  // We never re-derive the move from squares here — the deterministic core
+  // already did that inside Board.
   const onMove = useCallback(
-    (from: string, to: string): boolean => {
-      if (!drill || !step) return false;
-      const applied = applyMoveFromSquares(step.fenBefore, from, to);
-      if (!applied.ok) return false;
+    (san: string): void => {
+      if (!drill || !step) return;
 
-      const fb = evaluateAttempt(drill, step, applied.san, hintLevel, steps);
+      const fb = evaluateAttempt(drill, step, san, hintLevel, steps);
       setFeedback(fb);
       setScore((s) => s + fb.scoreDelta);
-      persist(step, fb, applied.san);
+      persist(step, fb, san);
 
       if (fb.correct) {
         if (fb.fenAfter) setFen(fb.fenAfter);
         setHintLevel(0);
         setStepIndex((i) => i + 1);
-        return true;
+        return;
       }
-      // Incorrect: escalate hint, board snaps back to the step position.
+      // Incorrect (but legal) move: escalate the hint, snap the board back.
       setHintLevel(fb.hintLevel);
       setFen(step.fenBefore);
-      return false;
     },
     [drill, step, hintLevel, steps, persist],
   );
@@ -139,7 +139,7 @@ export default function DrillPage({
     const body: CoachRequest = {
       openingName: data.openingName,
       fen: step.fenBefore,
-      legalMoves: [],
+      legalMoves: legalMoves(step.fenBefore),
       expectedMove: step.expectedSan,
       lessonExplanation: explanation?.explanation,
       commonMistake: explanation?.commonMistake ?? undefined,
