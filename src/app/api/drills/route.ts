@@ -8,6 +8,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getOpeningBySlug } from "@/lib/opening-content";
+import { updateProgressForAttempt } from "@/lib/progress-tracking";
 import type { AttemptPayload } from "@/lib/drill-engine";
 
 /**
@@ -101,6 +102,22 @@ export async function POST(request: Request) {
         hintUsed: body.hintUsed,
       },
     });
+
+    // Wire the persisted attempt into progress tracking (N7): a recorded
+    // attempt moves the line's confidence score. The line's openingId is
+    // looked up so per-opening aggregates attribute correctly.
+    const line = await prisma.line.findUnique({
+      where: { id: body.lineId },
+      select: { openingId: true },
+    });
+    await updateProgressForAttempt(prisma, {
+      userId: body.userId,
+      lineId: body.lineId,
+      openingId: line?.openingId,
+      correct: body.correct,
+      hintUsed: body.hintUsed,
+    });
+
     return NextResponse.json(attempt, { status: 201 });
   } catch (err) {
     // FK violation (bad lineId/moveExplanationId) or DB unavailable.
