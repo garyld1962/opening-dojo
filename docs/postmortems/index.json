@@ -1,0 +1,17 @@
+[
+  {
+    "run": "2026-06-14-opening-dojo",
+    "run_folder": "docs/runs/opening-dojo-20260614/",
+    "plan_slug": "opening-dojo",
+    "verdict": "WARN",
+    "gate_state": "completed-with-accepted-risk",
+    "trigger": "warn-verdict+partially-proved",
+    "recommendations": [
+      { "id": "R-001", "target": "plan-template", "type": "improve-prompt", "summary": "Require shared cross-lane component/contract APIs as Closed Decisions", "actionable": true, "confidence": "high" },
+      { "id": "R-002", "target": "plan-template", "type": "add-rubric-rule", "summary": "Make cross-module wiring an explicit task", "actionable": true, "confidence": "high" },
+      { "id": "R-003", "target": "claude-md/commands", "type": "documentation", "summary": "Document non-interactive Prisma migration path", "actionable": true, "confidence": "medium" },
+      { "id": "R-004", "target": "execute-plan-skill", "type": "add-gate", "summary": "Exclude .worktrees from test/typecheck before parallel dispatch", "actionable": true, "confidence": "medium" },
+      { "id": "R-005", "target": "code-review-profile", "type": "add-rubric-rule", "summary": "Dead-feature check: exported + tested but no call site", "actionable": true, "confidence": "high" }
+    ]
+  }
+]

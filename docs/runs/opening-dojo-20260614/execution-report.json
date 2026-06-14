@@ -1,0 +1,73 @@
+{
+  "verdict": "WARN",
+  "plan_file": "docs/plans/opening-dojo.plan.md",
+  "plan_sha": "63cab2aa62223b17922642bad53e1593188745b1",
+  "base_sha": "4b825dc642cb6eb9a060e54bf8d69288fbee4904",
+  "head_sha": "299dc39984347047882c0b1564418c0381e0de81",
+  "branch": "master",
+  "mode": "auto",
+  "gate_state": "completed-with-accepted-risk",
+  "tasks": [
+    { "id": 1, "description": "Scaffold Next.js + tooling", "status": "DONE", "commit": "87a6b12" },
+    { "id": 2, "description": "Domain types + module skeletons", "status": "DONE", "commit": "6e77578" },
+    { "id": 3, "description": "Prisma schema + migration + demo user", "status": "DONE", "commit": "9851e33" },
+    { "id": 4, "description": "chess-rules deterministic core", "status": "DONE", "commit": "acff350" },
+    { "id": 5, "description": "Curated content + validated seed", "status": "DONE", "commit": "660fa8e" },
+    { "id": 6, "description": "Board + Lesson/Overview UI", "status": "DONE", "commit": "0d14f17" },
+    { "id": 7, "description": "Drill engine + page + persistence", "status": "DONE", "commit": "cce46a2" },
+    { "id": 8, "description": "AI Coach endpoint", "status": "DONE", "commit": "e1d8ccd" },
+    { "id": 9, "description": "Progress tracking", "status": "DONE", "commit": "818a3cf" },
+    { "id": 10, "description": "Home + Progress dashboard", "status": "DONE", "commit": "52e96d2" },
+    { "id": 11, "description": "End-to-end happy path", "status": "DONE", "commit": "e41cbac" },
+    { "id": 12, "description": "Final verification + traceability", "status": "DONE", "commit": "dca9d48" }
+  ],
+  "milestones": [
+    { "id": 1, "name": "Foundation", "breakpoint_review": { "findings": [
+      { "id": "F-001", "severity": "major", "status": "fixed" },
+      { "id": "F-002", "severity": "minor", "status": "disagree-with-evidence" }
+    ] } },
+    { "id": 2, "name": "Feature modules", "breakpoint_review": { "findings": [
+      { "id": "F-010", "severity": "minor", "status": "fixed" },
+      { "id": "F-011", "severity": "minor", "status": "fixed" },
+      { "id": "F-012", "severity": "minor", "status": "defer" },
+      { "id": "F-013", "severity": "minor", "status": "defer" }
+    ] } },
+    { "id": 3, "name": "Integration & verification", "breakpoint_review": { "findings": [] } }
+  ],
+  "findings": [
+    { "id": "FR-001", "severity": "major", "file": "src/lib/progress-tracking/index.ts", "summary": "recency decay never applied in read paths", "status": "fixed" },
+    { "id": "FR-002", "severity": "minor", "file": "src/app/api/coach/route.ts", "summary": "no CoachRequest shape validation", "status": "fixed" },
+    { "id": "FR-003", "severity": "minor", "file": "src/app/api/drills/route.ts", "summary": "raw DB error text leaked to client", "status": "fixed" },
+    { "id": "FR-004", "severity": "minor", "file": "prisma/schema.prisma", "summary": "Opening.name not unique (drills GET findFirst by name)", "status": "defer", "rationale": "seed guarantees one opening per name; constraint requires interactive migration; post-MVP" },
+    { "id": "FR-005", "severity": "minor", "file": "src/lib/ai-coach/log.ts", "summary": "coachLog is in-memory, not durable", "status": "accepted-risk", "rationale": "console.info is the audit record for MVP" },
+    { "id": "FR-006", "severity": "nit", "file": "src/components/Board.test.tsx", "summary": "onMove not-called assertion is vacuous", "status": "open" },
+    { "id": "FR-007", "severity": "nit", "file": "src/lib/types.shape.test.ts", "summary": "shape test near-tautological", "status": "open" },
+    { "id": "AX-1", "severity": "major", "file": "src/app/api/coach/route.ts", "summary": "coach trusted client legalMoves", "status": "fixed" },
+    { "id": "AX-3", "severity": "major", "file": "src/lib/drill-engine/index.ts", "summary": "reveal not terminal (reveal then replay nets 0)", "status": "fixed" },
+    { "id": "AX-2", "severity": "minor", "file": "src/lib/ai-coach/client.ts", "summary": "no post-validation of LLM prose move claims", "status": "disagree-with-evidence", "rationale": "deterministic core owns legality (N6 holds); input bounded; deep output-validation post-MVP" },
+    { "id": "AX-4", "severity": "minor", "file": "src/app/api/drills/route.ts", "summary": "trusts client correct/hintUsed", "status": "disagree-with-evidence", "rationale": "single-user no-auth MVP (PRD §3), self-cheat only; hintUsed bounds added; server-authoritative recompute post-MVP" },
+    { "id": "AX-5", "severity": "minor", "file": "src/lib/chess-rules/index.ts", "summary": "coordinate-notation PGN validates; raw string stored", "status": "defer", "rationale": "app uses derived SAN/FEN; curated content clean" }
+  ],
+  "grades": {
+    "components": [
+      { "name": "deterministic-core", "grade": "senior", "axes": { "boundaries": "staff" } },
+      { "name": "feature-modules", "grade": "senior", "axes": { "boundaries": "staff (ai-coach)" } },
+      { "name": "web-api", "grade": "senior", "axes": { "weakest": "DrillPage (mid)" } }
+    ],
+    "overall_read": "Senior-grade; standout is CI-enforced deterministic-core/explanation-only-AI boundaries. Weakest: silent degradation, hand-written cross-process guards, DrillPage size."
+  },
+  "retry_stats": { "total_retries": 0, "wall_clock_minutes": null, "budget_used_fraction": 0.0 },
+  "adversarial": { "status": "ran", "reason": "diff > 200 lines (auto)", "verdict": "CONTESTED", "findings": ["AX-1", "AX-2", "AX-3", "AX-4", "AX-5"] },
+  "open_questions": [],
+  "decisions_written": [],
+  "proof_accounting": [
+    { "task": 6, "criterion": "illegal move leaves FEN unchanged (component render)", "classification": "partially-proved", "evidence": "handleSquareMove unit-proved; component assertion weak" },
+    { "task": 10, "criterion": "dashboard data assembly", "classification": "partially-proved", "evidence": "getProgressSummary DB enrichment not directly unit-tested" }
+  ],
+  "plan_deviations": [
+    { "id": "D-001", "summary": "applyMoveFromSquares/legalDestinations added to chess-rules", "status": "disagree-with-evidence" },
+    { "id": "D-002", "summary": "GET /api/drills added", "status": "disagree-with-evidence" },
+    { "id": "D-003", "summary": "/api/drills POST wired to updateProgressForAttempt", "status": "disagree-with-evidence" },
+    { "id": "D-004", "summary": "test infra: fileParallelism + worktree/tsbuildinfo excludes", "status": "disagree-with-evidence" }
+  ]
+}
