@@ -238,6 +238,12 @@ export default function DrillPage({
               const fb = evaluateAttempt(drill, step, "@@nomove@@", hintLevel, steps);
               setFeedback(fb);
               setHintLevel(fb.hintLevel);
+              // Reaching the reveal via the hint ladder scores and persists the
+              // same as reaching it via a wrong guess (PRD §6.5: reveal = -1).
+              if (fb.hintLevel === 3) {
+                setScore((s) => s + fb.scoreDelta);
+                persist(step, fb, "(revealed)");
+              }
             }}
           >
             Hint

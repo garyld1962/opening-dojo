@@ -16,16 +16,23 @@ export async function GET(req: Request): Promise<Response> {
   const url = new URL(req.url);
   const userId = url.searchParams.get("userId") ?? DEMO_USER_ID;
 
-  const [overall, byOpening, weak] = await Promise.all([
-    overallConfidence(prisma, userId),
-    progressByOpening(prisma, userId),
-    weakLines(prisma, userId),
-  ]);
+  try {
+    const [overall, byOpening, weak] = await Promise.all([
+      overallConfidence(prisma, userId),
+      progressByOpening(prisma, userId),
+      weakLines(prisma, userId),
+    ]);
 
-  return Response.json({
-    userId,
-    overallConfidence: overall,
-    byOpening,
-    weakLines: weak,
-  });
+    return Response.json({
+      userId,
+      overallConfidence: overall,
+      byOpening,
+      weakLines: weak,
+    });
+  } catch {
+    return Response.json(
+      { error: "Failed to load progress." },
+      { status: 503 },
+    );
+  }
 }
