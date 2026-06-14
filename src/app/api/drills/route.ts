@@ -68,7 +68,10 @@ function isAttemptPayload(value: unknown): value is AttemptPayload {
     typeof v.attemptedMove === "string" &&
     typeof v.expectedMove === "string" &&
     typeof v.correct === "boolean" &&
-    typeof v.hintUsed === "number"
+    typeof v.hintUsed === "number" &&
+    Number.isInteger(v.hintUsed) &&
+    (v.hintUsed as number) >= 0 &&
+    (v.hintUsed as number) <= 3
   );
 }
 

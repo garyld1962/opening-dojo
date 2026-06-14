@@ -97,18 +97,56 @@ function explanationFor(
 }
 
 /**
+ * Compute the board state after the (correct) expected move at `step`, plus the
+ * opponent's reply if one follows. Shared by the correct and reveal branches so
+ * both advance the line identically.
+ */
+function advancePastExpected(
+  drill: DrillLine,
+  step: DrillStep,
+  allSteps: DrillStep[],
+): { opponentReplySan?: string; fenAfter?: string; complete: boolean } {
+  const idx = allSteps.findIndex(
+    (s) => s.moveExplanationId === step.moveExplanationId,
+  );
+  const isLast = idx === allSteps.length - 1;
+
+  const afterUser = applyMove(step.fenBefore, step.expectedSan);
+  let fenAfter = afterUser.ok ? afterUser.fenAfter : undefined;
+  let opponentReplySan: string | undefined;
+
+  if (!isLast && afterUser.ok) {
+    const validated = validateLineDetailed(
+      drill.line.startingFen,
+      drill.line.moveSequencePgn,
+    );
+    if (validated.ok) {
+      const replyPly = validated.moves[step.ply + 1];
+      if (replyPly && replyPly.sideToMove !== step.sideToMove) {
+        opponentReplySan = replyPly.san;
+        fenAfter = replyPly.fenAfter;
+      }
+    }
+  }
+  return { opponentReplySan, fenAfter, complete: isLast };
+}
+
+/**
  * Evaluate a single user attempt against the current `DrillStep`.
  *
  * Correct (SAN matches the expected move, normalized):
  *   - scoreDelta = +3 if no hint had been used (currentHintLevel === 0), else +1
- *   - includes the opponent reply (next ply SAN) when one exists, plus the FEN
- *     after the user move and opponent reply
- *   - complete = true when this was the last trained step
+ *   - includes the opponent reply + resulting FEN; complete on the last step
  *
- * Incorrect (hint escalation, scoreDelta 0 except reveal):
- *   - 0 → 1: general hint (hintLevel1)
- *   - 1 → 2: strategic hint (hintLevel2)
- *   - 2 → 3: reveal correct move + revealExplanation, scoreDelta -1
+ * Incorrect, hint escalation:
+ *   - 0 → 1: general hint (hintLevel1), scoreDelta 0
+ *   - 1 → 2: strategic hint (hintLevel2), scoreDelta 0
+ *   - 2 → 3: reveal — the step is TERMINAL. scoreDelta -1 is charged exactly
+ *     once; the reveal carries the advance info (opponent reply + FEN) so the
+ *     UI moves on. The revealed move is never replayed for credit.
+ *
+ * Calling evaluateAttempt again with currentHintLevel === 3 (already revealed)
+ * is a no-op for scoring (scoreDelta 0) — the reveal already resolved the step.
  */
 export function evaluateAttempt(
   drill: DrillLine,
@@ -120,39 +158,30 @@ export function evaluateAttempt(
   const allSteps = steps ?? buildDrillSteps(drill);
   const explanation = explanationFor(drill.moves, step);
 
+  // The step was already revealed (scored -1). Further attempts don't re-score.
+  if (currentHintLevel === 3) {
+    const advance = advancePastExpected(drill, step, allSteps);
+    return {
+      correct: sameMove(step.fenBefore, attemptedSan, step.expectedSan),
+      hintLevel: 3,
+      revealedSan: step.expectedSan,
+      revealExplanation: explanation?.revealExplanation ?? undefined,
+      ...advance,
+      scoreDelta: 0,
+    };
+  }
+
   const correct = sameMove(step.fenBefore, attemptedSan, step.expectedSan);
 
   if (correct) {
-    const idx = allSteps.findIndex((s) => s.moveExplanationId === step.moveExplanationId);
-    const isLast = idx === allSteps.length - 1;
-
-    // Apply the user move, then the opponent reply (the ply immediately after
-    // this trained ply, if any), to produce the resulting board state.
-    const afterUser = applyMove(step.fenBefore, step.expectedSan);
-    let fenAfter = afterUser.ok ? afterUser.fenAfter : undefined;
-    let opponentReplySan: string | undefined;
-
-    if (!isLast && afterUser.ok) {
-      const validated = validateLineDetailed(
-        drill.line.startingFen,
-        drill.line.moveSequencePgn,
-      );
-      if (validated.ok) {
-        const replyPly = validated.moves[step.ply + 1];
-        if (replyPly && replyPly.sideToMove !== step.sideToMove) {
-          opponentReplySan = replyPly.san;
-          fenAfter = replyPly.fenAfter;
-        }
-      }
-    }
-
+    const advance = advancePastExpected(drill, step, allSteps);
     return {
       correct: true,
       hintLevel: currentHintLevel,
-      opponentReplySan,
-      fenAfter,
+      opponentReplySan: advance.opponentReplySan,
+      fenAfter: advance.fenAfter,
       scoreDelta: currentHintLevel === 0 ? 3 : 1,
-      complete: isLast,
+      complete: advance.complete,
     };
   }
 
@@ -177,14 +206,18 @@ export function evaluateAttempt(
       complete: false,
     };
   }
-  // nextLevel === 3: reveal.
+  // nextLevel === 3: reveal — terminal for this step, charged -1 once, and
+  // carries the advance info so the UI moves to the next position.
+  const advance = advancePastExpected(drill, step, allSteps);
   return {
     correct: false,
     hintLevel: 3,
     revealedSan: step.expectedSan,
     revealExplanation: explanation?.revealExplanation ?? undefined,
+    opponentReplySan: advance.opponentReplySan,
+    fenAfter: advance.fenAfter,
     scoreDelta: -1,
-    complete: false,
+    complete: advance.complete,
   };
 }
 

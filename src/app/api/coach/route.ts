@@ -1,5 +1,9 @@
 import type { CoachRequest } from "@/lib/types";
 import { callCoach } from "@/lib/ai-coach";
+import { legalMoves } from "@/lib/chess-rules";
+
+/** Cap free-text question length to bound the prompt (defensive). */
+const MAX_QUESTION_TEXT = 500;
 
 /** Minimal runtime shape guard for the constrained coach payload. */
 function isCoachRequest(value: unknown): value is CoachRequest {
@@ -36,8 +40,23 @@ export async function POST(req: Request): Promise<Response> {
     );
   }
 
+  // chess-rules is the legality authority (N6): recompute legal moves
+  // server-side from the FEN rather than trusting the client-supplied list.
+  // A malformed FEN yields an empty list, which the prompt presents honestly.
+  const serverLegalMoves = legalMoves(body.fen);
+  const safeRequest: CoachRequest = {
+    ...body,
+    legalMoves: serverLegalMoves,
+    question: body.question
+      ? {
+          kind: body.question.kind,
+          text: body.question.text?.slice(0, MAX_QUESTION_TEXT),
+        }
+      : undefined,
+  };
+
   try {
-    const response = await callCoach(body);
+    const response = await callCoach(safeRequest);
     return Response.json(response, { status: 200 });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Coach unavailable";

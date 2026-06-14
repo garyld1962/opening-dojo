@@ -118,13 +118,16 @@ export default function DrillPage({
       setScore((s) => s + fb.scoreDelta);
       persist(step, fb, san);
 
-      if (fb.correct) {
+      // Correct, OR the 3rd miss revealed the answer: the step is resolved.
+      // Advance past it (the revealed move is auto-played, never replayed for
+      // credit). A reveal already charged -1; the revealed move earns nothing.
+      if (fb.correct || fb.hintLevel === 3) {
         if (fb.fenAfter) setFen(fb.fenAfter);
         setHintLevel(0);
         setStepIndex((i) => i + 1);
         return;
       }
-      // Incorrect (but legal) move: escalate the hint, snap the board back.
+      // Incorrect (but legal) move below reveal: escalate the hint, snap back.
       setHintLevel(fb.hintLevel);
       setFen(step.fenBefore);
     },
@@ -237,12 +240,16 @@ export default function DrillPage({
               // Force a miss to surface the next hint level.
               const fb = evaluateAttempt(drill, step, "@@nomove@@", hintLevel, steps);
               setFeedback(fb);
-              setHintLevel(fb.hintLevel);
-              // Reaching the reveal via the hint ladder scores and persists the
-              // same as reaching it via a wrong guess (PRD §6.5: reveal = -1).
+              // Reaching the reveal via the hint ladder scores -1 and resolves
+              // the step (PRD §6.5), advancing past it just like a 3rd miss.
               if (fb.hintLevel === 3) {
                 setScore((s) => s + fb.scoreDelta);
                 persist(step, fb, "(revealed)");
+                if (fb.fenAfter) setFen(fb.fenAfter);
+                setHintLevel(0);
+                setStepIndex((i) => i + 1);
+              } else {
+                setHintLevel(fb.hintLevel);
               }
             }}
           >
