@@ -5,12 +5,14 @@ import {
   START_FEN,
   legalMoves,
   applyMove,
+  applyMoveFromSquares,
   isLegal,
   sideToMove,
   validateLine,
   validateLineDetailed,
   pgnToSanTokens,
   boardOrientation,
+  legalDestinations,
 } from "@/lib/chess-rules";
 
 // A clean, fully-legal London System setup line.
@@ -48,6 +50,20 @@ describe("chess-rules: legal moves & application", () => {
   it("rejects a move from an invalid FEN", () => {
     const result = applyMove("not-a-fen", "d4");
     expect(result.ok).toBe(false);
+  });
+
+  it("applies a move from source/target squares", () => {
+    const ok = applyMoveFromSquares(START_FEN, "d2", "d4");
+    expect(ok.ok).toBe(true);
+    if (ok.ok) expect(ok.san).toBe("d4");
+    const bad = applyMoveFromSquares(START_FEN, "d2", "d5"); // illegal jump
+    expect(bad.ok).toBe(false);
+  });
+
+  it("lists legal destination squares for a piece (board highlights)", () => {
+    const dests = legalDestinations(START_FEN, "d2");
+    expect(dests.sort()).toEqual(["d3", "d4"]);
+    expect(legalDestinations(START_FEN, "d4")).toEqual([]); // empty square
   });
 
   it("isLegal agrees with applyMove", () => {

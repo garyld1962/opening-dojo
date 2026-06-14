@@ -62,9 +62,50 @@ export function applyMove(fen: string, san: string): ApplyMoveResult {
   }
 }
 
+/**
+ * Apply a move given as source/target squares (what a drag-and-drop board
+ * produces). Promotions default to a queen. Returns the resulting FEN +
+ * normalized SAN, or a reason. This is the square-based counterpart to
+ * applyMove for the interactive board.
+ */
+export function applyMoveFromSquares(
+  fen: string,
+  from: string,
+  to: string,
+  promotion: "q" | "r" | "b" | "n" = "q",
+): ApplyMoveResult {
+  let game: Chess;
+  try {
+    game = newGame(fen);
+  } catch {
+    return { ok: false, reason: `Invalid FEN: ${fen}` };
+  }
+  try {
+    const move = game.move({ from, to, promotion });
+    return { ok: true, fenAfter: game.fen(), san: move.san };
+  } catch {
+    return { ok: false, reason: `Illegal move ${from}-${to} in position ${fen}` };
+  }
+}
+
 /** Whether `san` is a legal move in `fen`. */
 export function isLegal(fen: string, san: string): boolean {
   return applyMove(fen, san).ok;
+}
+
+/**
+ * Legal destination squares for the piece on `square` in `fen` — used by the
+ * board to highlight where a selected/dragged piece may go. Empty if the
+ * square has no piece or no legal moves.
+ */
+export function legalDestinations(fen: string, square: string): string[] {
+  try {
+    return newGame(fen)
+      .moves({ square: square as never, verbose: true })
+      .map((m) => (m as { to: string }).to);
+  } catch {
+    return [];
+  }
 }
 
 /** Which side is to move in `fen`. */
