@@ -15,6 +15,9 @@ export interface CallCoachOptions {
   transport?: typeof fetch;
   baseUrl?: string;
   model?: string;
+  /** Abort the request after this many ms (default 20s) so a stalled model
+   * server surfaces as a CoachError instead of hanging the request. */
+  timeoutMs?: number;
 }
 
 interface ChatCompletion {
@@ -50,6 +53,8 @@ export async function callCoach(
     request: req,
   });
 
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), opts.timeoutMs ?? 20_000);
   let res: Response;
   try {
     res = await transport(`${baseUrl}/v1/chat/completions`, {
@@ -63,9 +68,12 @@ export async function callCoach(
         ],
         stream: false,
       }),
+      signal: controller.signal,
     });
   } catch (cause) {
     throw new CoachError("Coach transport request failed", { cause });
+  } finally {
+    clearTimeout(timeout);
   }
 
   if (!res.ok) {

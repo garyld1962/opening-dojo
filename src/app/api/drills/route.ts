@@ -53,11 +53,8 @@ export async function GET(request: Request) {
       moves: line.moves,
     });
   } catch (err) {
-    const message = err instanceof Error ? err.message : "Unknown error";
-    return NextResponse.json(
-      { error: "Could not load drill", detail: message },
-      { status: 500 },
-    );
+    console.error("GET /api/drills failed:", err);
+    return NextResponse.json({ error: "Could not load drill" }, { status: 500 });
   }
 }
 
@@ -121,9 +118,9 @@ export async function POST(request: Request) {
     return NextResponse.json(attempt, { status: 201 });
   } catch (err) {
     // FK violation (bad lineId/moveExplanationId) or DB unavailable.
-    const message = err instanceof Error ? err.message : "Unknown error";
+    console.error("POST /api/drills failed:", err);
     return NextResponse.json(
-      { error: "Could not persist attempt", detail: message },
+      { error: "Could not persist attempt" },
       { status: 422 },
     );
   }

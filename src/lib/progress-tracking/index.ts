@@ -93,36 +93,47 @@ export async function updateProgressForAttempt(
 }
 
 /**
- * The user's weakest lines (lowest confidence first), capped at `limit`.
- * Only rows scoped to a line are considered.
+ * The user's weakest lines (lowest decayed confidence first), capped at
+ * `limit`. Recency decay (PRD §6.5) is applied at read time so un-practiced
+ * lines surface as weaker; stored scores are never mutated on read. Ordering
+ * is by decayed score, so it cannot be pushed to the DB.
  */
 export async function weakLines(
   client: ProgressClient,
   userId: string,
   limit = 3,
+  now: Date = new Date(),
 ): Promise<UserProgress[]> {
   const rows = await client.userProgress.findMany({
     where: { userId, lineId: { not: null } },
-    orderBy: { confidenceScore: "asc" },
-    take: limit,
   });
-  return rows as UserProgress[];
+  return (rows as UserProgress[])
+    .map((r) => ({
+      ...r,
+      confidenceScore: applyDecay(r.confidenceScore, r.lastPracticedAt, now),
+    }))
+    .sort((a, b) => a.confidenceScore - b.confidenceScore)
+    .slice(0, limit);
 }
 
 /**
- * Mean confidence across the user's line-scoped progress rows. Returns 0 when
- * the user has no progress yet.
+ * Mean decayed confidence across the user's line-scoped progress rows (PRD
+ * §6.5 decay applied at read time). Returns 0 when the user has no progress.
  */
 export async function overallConfidence(
   client: ProgressClient,
   userId: string,
+  now: Date = new Date(),
 ): Promise<number> {
   const rows = await client.userProgress.findMany({
     where: { userId, lineId: { not: null } },
-    select: { confidenceScore: true },
+    select: { confidenceScore: true, lastPracticedAt: true },
   });
   if (rows.length === 0) return 0;
-  const total = rows.reduce((sum, r) => sum + r.confidenceScore, 0);
+  const total = rows.reduce(
+    (sum, r) => sum + applyDecay(r.confidenceScore, r.lastPracticedAt, now),
+    0,
+  );
   return total / rows.length;
 }
 
@@ -143,6 +154,7 @@ export interface OpeningProgress {
 export async function progressByOpening(
   client: ProgressClient,
   userId: string,
+  now: Date = new Date(),
 ): Promise<OpeningProgress[]> {
   const rows = await client.userProgress.findMany({
     where: { userId, lineId: { not: null }, openingId: { not: null } },
@@ -150,6 +162,7 @@ export async function progressByOpening(
       openingId: true,
       confidenceScore: true,
       completedLessons: true,
+      lastPracticedAt: true,
     },
   });
 
@@ -164,7 +177,7 @@ export async function progressByOpening(
       lineCount: 0,
       completedLessons: 0,
     };
-    agg.sum += r.confidenceScore;
+    agg.sum += applyDecay(r.confidenceScore, r.lastPracticedAt, now);
     agg.lineCount += 1;
     agg.completedLessons += r.completedLessons;
     byOpening.set(key, agg);

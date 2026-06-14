@@ -161,8 +161,10 @@ describe("weakLines", () => {
     expect(weak).toHaveLength(3);
     const scores = weak.map((w) => w.confidenceScore);
     expect(scores).toEqual([...scores].sort((a, b) => a - b));
-    expect(weak[0].lineId).toBe(lineIds[1]); // -1, the weakest
-    expect(weak[0].confidenceScore).toBe(-1);
+    expect(weak[0].lineId).toBe(lineIds[1]); // the weakest line
+    // Decay is applied at read time and clamps confidence at 0, so the
+    // mistake-driven -1 surfaces as 0 (still the lowest of {0, 3, 6}).
+    expect(weak[0].confidenceScore).toBe(0);
   });
 
   it("respects the limit", async () => {
@@ -173,19 +175,20 @@ describe("weakLines", () => {
 });
 
 describe("aggregates", () => {
-  it("overallConfidence averages the user's line scores", async () => {
-    // line0=3, line1=-1, line2=6 → mean = 8/3
+  it("overallConfidence averages decayed line scores", async () => {
+    // Raw line0=3, line1=-1, line2=6. Read-time decay clamps -1 → 0 (rows are
+    // fresh, so no time decay), giving mean = (3 + 0 + 6) / 3 = 3.
     const avg = await overallConfidence(prisma, TEST_USER_ID);
-    expect(avg).toBeCloseTo(8 / 3, 6);
+    expect(avg).toBeCloseTo(3, 6);
   });
 
-  it("progressByOpening aggregates without error", async () => {
+  it("progressByOpening aggregates decayed scores", async () => {
     const byOpening = await progressByOpening(prisma, TEST_USER_ID);
     expect(byOpening.length).toBeGreaterThanOrEqual(1);
     const entry = byOpening.find((o) => o.openingId === openingId);
     expect(entry).toBeDefined();
     expect(entry!.lineCount).toBe(3);
-    expect(entry!.averageConfidence).toBeCloseTo(8 / 3, 6);
+    expect(entry!.averageConfidence).toBeCloseTo(3, 6); // (3 + 0 + 6) / 3
   });
 
   it("overallConfidence is 0 for a user with no progress", async () => {
