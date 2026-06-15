@@ -33,3 +33,6 @@ yarn-error.log*
 # editor / worktrees
 .idea
 .worktrees/
+
+# typescript incremental build info
+tsconfig.tsbuildinfo

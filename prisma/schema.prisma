@@ -1,0 +1,115 @@
+// Opening Dojo data model — implements PRD §8 verbatim.
+// chess-rules owns correctness; this schema only persists curated content,
+// drill attempts, and progress.
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Side {
+  white
+  black
+}
+
+/// Single demo user (no auth UI in MVP — PRD §3 non-goals).
+model User {
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now())
+
+  attempts DrillAttempt[]
+  progress UserProgress[]
+}
+
+/// PRD §8.1
+model Opening {
+  id          String   @id @default(cuid())
+  name        String
+  side        Side
+  description String
+  difficulty  String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  lines    Line[]
+  progress UserProgress[]
+}
+
+/// PRD §8.2
+model Line {
+  id              String  @id @default(cuid())
+  openingId       String
+  name            String
+  startingFen     String
+  moveSequencePgn String
+  description     String
+  priority        Int     @default(0)
+  active          Boolean @default(true)
+
+  opening   Opening           @relation(fields: [openingId], references: [id], onDelete: Cascade)
+  moves     MoveExplanation[]
+  attempts  DrillAttempt[]
+  progress  UserProgress[]
+
+  @@unique([openingId, name])
+}
+
+/// PRD §8.3
+model MoveExplanation {
+  id                String  @id @default(cuid())
+  lineId            String
+  moveNumber        Int
+  san               String
+  fenBefore         String
+  fenAfter          String
+  explanation       String
+  theme             String?
+  commonMistake     String?
+  hintLevel1        String?
+  hintLevel2        String?
+  revealExplanation String?
+
+  line     Line           @relation(fields: [lineId], references: [id], onDelete: Cascade)
+  attempts DrillAttempt[]
+
+  @@unique([lineId, moveNumber])
+}
+
+/// PRD §8.4
+model DrillAttempt {
+  id                String   @id @default(cuid())
+  userId            String
+  lineId            String
+  moveExplanationId String?
+  attemptedMove     String
+  expectedMove      String
+  correct           Boolean
+  hintUsed          Int      @default(0)
+  createdAt         DateTime @default(now())
+
+  user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  line            Line             @relation(fields: [lineId], references: [id], onDelete: Cascade)
+  moveExplanation MoveExplanation? @relation(fields: [moveExplanationId], references: [id], onDelete: SetNull)
+}
+
+/// PRD §8.5
+model UserProgress {
+  id              String    @id @default(cuid())
+  userId          String
+  openingId       String?
+  lineId          String?
+  confidenceScore Float     @default(0)
+  completedLessons Int      @default(0)
+  lastPracticedAt DateTime?
+
+  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  opening Opening? @relation(fields: [openingId], references: [id], onDelete: Cascade)
+  line    Line?    @relation(fields: [lineId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, lineId])
+}

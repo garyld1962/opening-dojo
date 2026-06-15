@@ -1,0 +1,16 @@
+{
+  "run": "2026-06-14-opening-dojo",
+  "plan_file": "docs/plans/opening-dojo.plan.md",
+  "verdict": "WARN",
+  "gate_state": "completed-with-accepted-risk",
+  "trigger": "warn-verdict+partially-proved",
+  "mode": "full",
+  "recommendations": [
+    { "id": "R-001", "target": "plan-template", "type": "improve-prompt", "summary": "Require shared cross-lane component/contract APIs (prop + handler signatures) as Closed Decisions", "evidence": "execution-report.json#findings (Board onMove mismatch, integration fix 59c625f)", "actionable": true, "confidence": "high" },
+    { "id": "R-002", "target": "plan-template", "type": "add-rubric-rule", "summary": "Make cross-module wiring (persist->aggregate) an explicit task", "evidence": "drill-attempt->progress wiring added in e41cbac", "actionable": true, "confidence": "high" },
+    { "id": "R-003", "target": "claude-md/commands", "type": "documentation", "summary": "Document non-interactive Prisma migration path (migrate dev needs TTY)", "evidence": "Opening.name unique deferred (FR-004)", "actionable": true, "confidence": "medium" },
+    { "id": "R-004", "target": "execute-plan-skill", "type": "add-gate", "summary": "Ensure test/typecheck config excludes .worktrees before parallel dispatch", "evidence": "vitest ran 4 worktree copies until excluded (66c75b9)", "actionable": true, "confidence": "medium" },
+    { "id": "R-005", "target": "code-review-profile", "type": "add-rubric-rule", "summary": "Add dead-feature check: exported + unit-tested but no call site", "evidence": "applyDecay shipped unwired; caught by full review (FR-001)", "actionable": true, "confidence": "high" }
+  ],
+  "headline": "Require shared cross-lane component/contract APIs as Closed Decisions — the unspecified Board onMove signature and drill->progress wiring were the run's two integration defects"
+}
