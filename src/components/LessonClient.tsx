@@ -39,8 +39,8 @@ export function LessonClient({
   const orientation = boardOrientation(side);
 
   return (
-    <main className="container mx-auto max-w-5xl px-4 py-8">
-      <div className="mb-6 flex items-center justify-between">
+    <main className="container mx-auto max-w-5xl py-4 sm:py-8">
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-2 sm:mb-6">
         <div>
           <Link
             href={`/openings/${slug}`}
@@ -50,22 +50,23 @@ export function LessonClient({
           </Link>
           <h1 className="text-2xl font-bold">Lesson: {line.name}</h1>
         </div>
-        <Link href={`/openings/${slug}/drill`}>
+        <Link href={`/openings/${slug}/drill?line=${line.priority}`}>
           <Button variant="secondary">Start drills</Button>
         </Link>
       </div>
 
-      <div className="grid gap-6 md:grid-cols-[minmax(0,480px)_1fr]">
-        <div className="flex flex-col gap-4">
+      <div className="grid gap-4 md:grid-cols-[minmax(0,560px)_1fr] md:gap-6">
+        <div className="flex flex-col items-center gap-4">
           <Board
             fen={step.fenAfter}
             orientation={orientation}
             interactive={false}
             highlightLegal={false}
           />
-          <div className="flex items-center justify-between gap-2">
+          <div className="flex w-full items-center justify-between gap-2">
             <Button
               variant="secondary"
+              className="h-12 md:h-10"
               onClick={() => setIndex((i) => Math.max(0, i - 1))}
               disabled={index === 0}
             >
@@ -76,6 +77,7 @@ export function LessonClient({
             </span>
             <Button
               variant="secondary"
+              className="h-12 md:h-10"
               onClick={() => setIndex((i) => Math.min(steps.length - 1, i + 1))}
               disabled={index === steps.length - 1}
             >

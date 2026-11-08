@@ -12,12 +12,15 @@ import { updateProgressForAttempt } from "@/lib/progress-tracking";
 import type { AttemptPayload } from "@/lib/drill-engine";
 
 /**
- * GET /api/drills?slug=<opening-slug> — load the highest-priority active line
+ * GET /api/drills?slug=<opening-slug>[&line=<priority>] — load the requested
+ * (default: highest-priority) active line
  * for an opening plus its MoveExplanation rows and trained side, so the client
  * drill page can build DrillSteps with real DB ids (FK-valid persistence).
  */
 export async function GET(request: Request) {
-  const slug = new URL(request.url).searchParams.get("slug");
+  const params = new URL(request.url).searchParams;
+  const slug = params.get("slug");
+  const linePriority = Number.parseInt(params.get("line") ?? "", 10);
   if (!slug) {
     return NextResponse.json({ error: "Missing slug" }, { status: 400 });
   }
@@ -37,7 +40,11 @@ export async function GET(request: Request) {
         },
       },
     });
-    const line = opening?.lines[0];
+    // Optional ?line=<priority> picks a specific line; default is the primary.
+    const line =
+      (Number.isFinite(linePriority) &&
+        opening?.lines.find((l) => l.priority === linePriority)) ||
+      opening?.lines[0];
     if (!opening || !line) {
       return NextResponse.json({ error: "No active line" }, { status: 404 });
     }

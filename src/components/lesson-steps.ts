@@ -43,3 +43,12 @@ export function buildLessonSteps(line: LineContent): LessonStep[] {
 export function primaryLine(lines: LineContent[]): LineContent {
   return lines.find((l) => l.priority === 1) ?? lines[0];
 }
+
+/**
+ * The line with the given priority (the URL's `?line=` value), falling back to
+ * the primary line when absent or unknown.
+ */
+export function lineByPriority(lines: LineContent[], priority?: string | number | null): LineContent {
+  const n = typeof priority === "string" ? Number.parseInt(priority, 10) : priority;
+  return (n != null && Number.isFinite(n) && lines.find((l) => l.priority === n)) || primaryLine(lines);
+}

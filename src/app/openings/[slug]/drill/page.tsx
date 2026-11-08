@@ -37,10 +37,13 @@ const DEMO_USER_ID = "00000000-0000-0000-0000-000000000001";
 
 export default function DrillPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ slug: string }>;
+  searchParams: Promise<{ line?: string }>;
 }) {
   const { slug } = use(params);
+  const lineParam = use(searchParams).line;
 
   const [data, setData] = useState<DrillData | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -56,7 +59,8 @@ export default function DrillPage({
   // Load the seeded line + explanations for this opening.
   useEffect(() => {
     let cancelled = false;
-    fetch(`/api/drills?slug=${encodeURIComponent(slug)}`)
+    const lineQuery = lineParam ? `&line=${encodeURIComponent(lineParam)}` : "";
+    fetch(`/api/drills?slug=${encodeURIComponent(slug)}${lineQuery}`)
       .then((r) => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
       .then((d: DrillData) => {
         if (cancelled) return;
@@ -69,7 +73,7 @@ export default function DrillPage({
     return () => {
       cancelled = true;
     };
-  }, [slug]);
+  }, [slug, lineParam]);
 
   const drill: DrillLine | null = useMemo(
     () =>
@@ -110,8 +114,8 @@ export default function DrillPage({
   // We never re-derive the move from squares here — the deterministic core
   // already did that inside Board.
   const onMove = useCallback(
-    (san: string): void => {
-      if (!drill || !step) return;
+    (san: string): boolean => {
+      if (!drill || !step) return false;
 
       const fb = evaluateAttempt(drill, step, san, hintLevel, steps);
       setFeedback(fb);
@@ -125,11 +129,12 @@ export default function DrillPage({
         if (fb.fenAfter) setFen(fb.fenAfter);
         setHintLevel(0);
         setStepIndex((i) => i + 1);
-        return;
+        return true;
       }
       // Incorrect (but legal) move below reveal: escalate the hint, snap back.
       setHintLevel(fb.hintLevel);
       setFen(step.fenBefore);
+      return false;
     },
     [drill, step, hintLevel, steps, persist],
   );
@@ -173,8 +178,8 @@ export default function DrillPage({
   }
 
   return (
-    <main className="mx-auto flex max-w-5xl flex-col gap-6 p-6 md:flex-row">
-      <div className="flex-shrink-0">
+    <main className="mx-auto flex max-w-5xl flex-col gap-4 px-4 py-4 sm:p-6 md:flex-row md:gap-6">
+      <div className="flex w-full justify-center md:w-auto md:max-w-[560px] md:flex-1">
         <Board
           fen={fen}
           orientation={boardOrientation(data.trainedSide)}
@@ -233,7 +238,7 @@ export default function DrillPage({
           {/* Hint button — escalates a level without consuming a move */}
           <button
             type="button"
-            className="rounded border px-3 py-1 text-sm"
+            className="min-h-11 flex-1 rounded border px-3 py-1 text-sm sm:flex-none"
             disabled={complete || !step || hintLevel >= 3}
             onClick={() => {
               if (!drill || !step) return;
@@ -259,7 +264,7 @@ export default function DrillPage({
           {/* Explain this — constrained coach request */}
           <button
             type="button"
-            className="rounded border px-3 py-1 text-sm"
+            className="min-h-11 flex-1 rounded border px-3 py-1 text-sm sm:flex-none"
             disabled={complete || !step || coachLoading}
             onClick={askCoach}
           >

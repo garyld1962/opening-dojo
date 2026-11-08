@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
-import { Board, MoveList, handleSquareMove } from "@/components/Board";
+import { Board, MoveList, handleSquareMove, resolveTap } from "@/components/Board";
 import { START_FEN } from "@/lib/chess-rules";
 
 describe("handleSquareMove (pure move handler)", () => {
@@ -68,5 +68,29 @@ describe("MoveList", () => {
     expect(screen.getByTestId("move-1")).toHaveTextContent("d5");
     expect(screen.getByTestId("move-2")).toHaveTextContent("Nf3");
     expect(screen.getByTestId("move-2")).toHaveAttribute("aria-current", "step");
+  });
+});
+
+describe("resolveTap (tap-to-move for phones)", () => {
+  it("first tap on an own piece selects it", () => {
+    expect(resolveTap(START_FEN, null, "g1")).toEqual({ kind: "select", square: "g1" });
+  });
+
+  it("second tap on a legal destination plays the move", () => {
+    const tap = resolveTap(START_FEN, "g1", "f3");
+    expect(tap).toMatchObject({ kind: "move", san: "Nf3" });
+  });
+
+  it("tapping another own piece switches the selection", () => {
+    expect(resolveTap(START_FEN, "g1", "e2")).toEqual({ kind: "select", square: "e2" });
+  });
+
+  it("tapping an empty or illegal square clears the selection", () => {
+    expect(resolveTap(START_FEN, "g1", "g4")).toEqual({ kind: "select", square: null });
+    expect(resolveTap(START_FEN, null, "e7")).toEqual({ kind: "select", square: null });
+  });
+
+  it("tapping the selected piece again deselects it", () => {
+    expect(resolveTap(START_FEN, "g1", "g1")).toEqual({ kind: "select", square: null });
   });
 });

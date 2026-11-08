@@ -2,6 +2,13 @@ import Link from "next/link";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui";
 import type { DrillSuggestion } from "./progress/suggest";
 
+export interface TrainingSummary {
+  due: number;
+  newToday: number;
+  learned: number;
+  total: number;
+}
+
 export interface RepertoireCard {
   slug: string;
   name: string;
@@ -18,19 +25,52 @@ export function HomeView({
   openings,
   overallConfidence,
   suggestion,
+  training,
 }: {
   openings: RepertoireCard[];
   overallConfidence: number;
   suggestion: DrillSuggestion | null;
+  training?: TrainingSummary | null;
 }) {
   return (
-    <main className="container mx-auto space-y-8 py-10">
+    <main className="container mx-auto space-y-8 py-6 sm:py-10">
       <header>
-        <h1 className="text-3xl font-bold">Opening Dojo</h1>
+        <h1 className="text-2xl font-bold sm:text-3xl">Opening Dojo</h1>
         <p className="text-muted-foreground">
           Learn and drill the London System and the Caro-Kann.
         </p>
       </header>
+
+      {training && (
+        <section>
+          <Card>
+            <CardHeader>
+              <CardTitle>Today&apos;s training</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <p className="text-sm" data-testid="home-training">
+                <span className="font-semibold">{training.due}</span> due ·{" "}
+                <span className="font-semibold">{training.newToday}</span> new ·{" "}
+                {training.learned}/{training.total} positions learned
+              </p>
+              <div className="flex flex-col gap-2 sm:flex-row">
+                <Link
+                  href="/train"
+                  className="inline-flex h-12 items-center justify-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground sm:h-10"
+                >
+                  {training.due + training.newToday > 0 ? "Start today's reviews" : "Review"}
+                </Link>
+                <Link
+                  href="/train?mode=line"
+                  className="inline-flex h-12 items-center justify-center rounded-md bg-secondary px-4 text-sm font-medium text-secondary-foreground sm:h-10"
+                >
+                  Play a line
+                </Link>
+              </div>
+            </CardContent>
+          </Card>
+        </section>
+      )}
 
       <section>
         <h2 className="mb-3 text-lg font-semibold">Choose your repertoire</h2>
