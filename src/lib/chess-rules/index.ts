@@ -88,6 +88,22 @@ export function applyMoveFromSquares(
   }
 }
 
+/**
+ * Source/target squares of a SAN move in `fen` (for last-move highlighting and
+ * piece-aware hints). Returns null if the FEN or move is invalid.
+ */
+export function moveSquares(
+  fen: string,
+  san: string,
+): { from: string; to: string; piece: string } | null {
+  try {
+    const move = newGame(fen).move(san);
+    return { from: move.from, to: move.to, piece: move.piece };
+  } catch {
+    return null;
+  }
+}
+
 /** Whether `san` is a legal move in `fen`. */
 export function isLegal(fen: string, san: string): boolean {
   return applyMove(fen, san).ok;

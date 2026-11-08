@@ -22,8 +22,9 @@ model User {
   id        String   @id @default(uuid())
   createdAt DateTime @default(now())
 
-  attempts DrillAttempt[]
-  progress UserProgress[]
+  attempts    DrillAttempt[]
+  progress    UserProgress[]
+  reviewCards ReviewCard[]
 }
 
 /// PRD §8.1
@@ -112,4 +113,27 @@ model UserProgress {
   line    Line?    @relation(fields: [lineId], references: [id], onDelete: Cascade)
 
   @@unique([userId, lineId])
+}
+
+/// Spaced-repetition state for one repertoire position (repertoire trainer).
+/// Keyed by `cardKey` = "<opening slug>:<position key>", which is derived from
+/// the board position, not from Line rows, so it survives content re-seeds.
+model ReviewCard {
+  id             String    @id @default(cuid())
+  userId         String
+  cardKey        String
+  openingSlug    String
+  expectedSan    String
+  ease           Float     @default(2.5)
+  intervalDays   Float     @default(0)
+  reps           Int       @default(0)
+  lapses         Int       @default(0)
+  due            DateTime
+  lastReviewedAt DateTime?
+  createdAt      DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, cardKey])
+  @@index([userId, due])
 }
